@@ -1,6 +1,8 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
+import numpy as np
+
 
 def pad_collate(batch):
     (xx, _, _, _, _) = zip(*batch)
@@ -53,17 +55,16 @@ class WrappedDataLoader:
         return x
 
     def zero_random_indicies(self, inter):
-        tensor_size = int(inter.shape[0] * inter.shape[1] * inter.shape[2] * 1)
-        dim0_indicies = torch.randint(inter.shape[0], (1, tensor_size))
-        dim1_indicies = torch.randint(inter.shape[1], (1, tensor_size))
-        dim2_indicies = torch.randint(inter.shape[2], (1, tensor_size))
-        indicies = torch.cat((dim0_indicies, dim1_indicies, dim2_indicies)).numpy()
+        inter_mag = torch.abs(inter)
+        inds = torch.where(inter_mag > torch.quantile(inter_mag, 0.9))
+        ri = np.random.choice(inds[0].shape[0], inds[0].shape[0] // 5, replace=False)
+        indicies = (inds[0][ri], inds[1][ri], inds[2][ri])
         inter[indicies] = 0
 
     def factor_random_indicies(self, inter):
-        tensor_size = int(inter.shape[0] * inter.shape[1] * inter.shape[2] * 1)
-        dim0_indicies = torch.randint(inter.shape[0], (1, tensor_size))
-        dim1_indicies = torch.randint(inter.shape[1], (1, tensor_size))
-        dim2_indicies = torch.randint(inter.shape[2], (1, tensor_size))
-        indicies = torch.cat((dim0_indicies, dim1_indicies, dim2_indicies)).numpy()
-        inter[indicies] = 2 * inter[indicies]
+        inter_mag = torch.abs(inter)
+        inds = torch.where(inter_mag < torch.quantile(inter_mag, 0.9))
+        ri = np.random.choice(inds[0].shape[0], inds[0].shape[0] // 2, replace=False)
+        indicies = (inds[0][ri], inds[1][ri], inds[2][ri])
+        inter[indicies] += 1
+        inter[indicies] = inter[indicies] / torch.abs(inter[indicies])
