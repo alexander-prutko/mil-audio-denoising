@@ -1,0 +1,21 @@
+{
+    "model": {
+        "condition_encoding": "binary",
+        "dilations": 9,
+        "filters": {
+            "lengths": {
+                "res": 3,
+                "final": [3, 3],
+                "skip": 1
+            },
+            "depths": {
+                "res": 128,
+                "skip": 128,
+                "final": [2048, 256]
+            }
+        },
+        "num_stacks": 3,
+        "target_field_length": 1601,
+        "target_padding": 1
+    }
+}

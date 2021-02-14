@@ -28,11 +28,12 @@ def preprocess(x, hop_length, dev):
 
 
 class WrappedDataLoader:
-    def __init__(self, dl, func, hop_length, dev):
+    def __init__(self, dl, func, hop_length, dev, zero_q, zero_f, one_q, one_f):
         self.dl = dl
         self.func = func
         self.hop_length = hop_length
         self.dev = dev
+        self.zero_q, self.zero_f, self.one_q, self.one_f = zero_q, zero_f, one_q, one_f
 
     def __len__(self):
         return len(self.dl)
@@ -56,15 +57,15 @@ class WrappedDataLoader:
 
     def zero_random_indicies(self, inter):
         inter_mag = torch.abs(inter)
-        inds = torch.where(inter_mag > torch.quantile(inter_mag, 0.9))
-        ri = np.random.choice(inds[0].shape[0], inds[0].shape[0] // 5, replace=False)
+        inds = torch.where(inter_mag > torch.quantile(inter_mag, self.zero_q))
+        ri = np.random.choice(inds[0].shape[0], int(inds[0].shape[0] * self.zero_f), replace=False)
         indicies = (inds[0][ri], inds[1][ri], inds[2][ri])
         inter[indicies] = 0
 
     def factor_random_indicies(self, inter):
         inter_mag = torch.abs(inter)
-        inds = torch.where(inter_mag < torch.quantile(inter_mag, 0.9))
-        ri = np.random.choice(inds[0].shape[0], inds[0].shape[0] // 2, replace=False)
+        inds = torch.where(inter_mag < torch.quantile(inter_mag, self.one_q))
+        ri = np.random.choice(inds[0].shape[0], int(inds[0].shape[0] * self.one_f), replace=False)
         indicies = (inds[0][ri], inds[1][ri], inds[2][ri])
         inter[indicies] += 1
         inter[indicies] = inter[indicies] / torch.abs(inter[indicies])
