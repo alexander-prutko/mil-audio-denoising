@@ -1,3 +1,4 @@
+import librosa
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
@@ -69,3 +70,37 @@ class WrappedDataLoader:
         indicies = (inds[0][ri], inds[1][ri], inds[2][ri])
         inter[indicies] += 1
         inter[indicies] = inter[indicies] / torch.abs(inter[indicies])
+
+
+class StreetNoiseDataLoader:
+    def __init__(self, dl, func, hop_length, dev, noise_files, factor):
+        self.dl = dl
+        self.func = func
+        self.hop_length = hop_length
+        self.dev = dev
+        self.noises = []
+        self.factor = factor
+        for file in noise_files:
+            y, sr = librosa.load(file, sr=48000)
+            self.noises.append(y)
+
+    def __len__(self):
+        return len(self.dl)
+
+    def __iter__(self):
+        batches = iter(self.dl)
+        for b in batches:
+            x = self.make_audio_noise(b)
+            x_noisy, y_true = self.func(x, self.hop_length, self.dev), \
+                              self.func(b.squeeze(1), self.hop_length, self.dev)
+            yield (x_noisy, y_true)
+
+    def make_audio_noise(self, b):
+        sz = b.shape[2]
+        rand_noise = np.random.randint(len(self.noises))
+        noise = self.noises[rand_noise]
+        max_start = noise.shape[0] - sz - 1000
+        start = np.random.randint(max_start)
+        x = b[:, 0, :] + noise[start:start + sz] * self.factor
+        return x
+
